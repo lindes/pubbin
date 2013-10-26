@@ -1,0 +1,34 @@
+#!/bin/zsh
+
+# git-initremote - initialize a remote git repository
+#
+# Copyright 2013 by David Lindes.  All Rights Reserved.
+#
+# See accompanying LICENSE file for licensing information.
+
+# for some reason, if we just use 'ssh', git says the command isn't
+# found... and yet, it can find it this way:
+ssh=`which ssh`
+
+# If we haven't specified any remots on the command-line, default to 'origin':
+if [ -z "$*" ]
+then
+    set -- origin
+fi
+
+# Loop through remotes, attempting to create remote directories as
+# empty bare repos, ready to push to:
+for remote in "$@"
+do
+    # first, get the URL from 'git remote':
+    # (Note: that's a hard tab in the grep string.)
+    read name url extra < <(git remote -v | grep "^$remote	" | grep push)
+
+    # next parse URL into host and path:
+    IFS=":" read host path < <(echo "$url")
+
+    # Finally, ssh to $host to create it, unless it already exists (in
+    # which case do nothing):
+    $ssh "$host" "test ! -d $path && git init --bare $path || echo '$host:$path: Already exists'"
+done
+
