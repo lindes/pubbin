@@ -1,0 +1,14 @@
+#!/bin/zsh
+
+# fixvt - come back out of the vt100 escape mode
+
+# just echoes an escape code that resets from the alternate character
+# set sometimes used for doing vt100-style terminal graphics.  I find
+# that some things leave me stuck in that mode sometimes, so this fixes
+# it.
+
+# Nota bene: we're relying on a zsh-compliant echo command.  Others
+# would surely work as well, but not all.  And I'm avoiding embedding
+# the actual code in the file, so that catting it doesn't trigger the
+# escape sequence.
+echo -ne '\e)B'
