@@ -1,0 +1,201 @@
+#!/bin/sh
+
+# toggle-pi-ap-mode - toggle on or off the Access Point mode of a Raspberry Pi
+# 
+# Copyright 2013 by David Lindes.  All rights reserved.
+# See the accompanying LICENSE file for license information.
+#
+# This script is based on the setup described in the instructions here:
+# http://learn.adafruit.com/setting-up-a-raspberry-pi-as-a-wifi-access-point
+# This script assumes you've already followed these, plus a few extras (see
+# next comment), to set things up.
+
+# Of course, one thing the above-referenced instructions didn't have us do is
+# create interfaces files for both versions, which we need, to easily toggle
+# back and forth.  I'm creating my own little pseudo-standard here for how this
+# should be done, and this is the check for making sure it's set up (with info
+# on how to set it up, if not):
+INTERFACES=/etc/network/interfaces
+validate_interfaces() {
+    if [ -f ${INTERFACES}.ap -a -f ${INTERFACES}.normal ]
+    then
+    	:
+    else
+	cat >&2 << EOF
+Sorry, looks like you need to set up your interfaces files for this script.
+
+Please copy $INTERFACES to ${INTERFACES}.ap and ${INTERFACES}.normal,
+and then edit them as follows:
+
+${INTERFACES}.ap should have the instructions for the access-point version, perhaps like:
+
+    iface wlan0 inet static
+      address 192.168.42.1
+      netmask 255.255.255.0
+    up iptables-restore < /etc/iptables.ipv4.nat
+
+${INTERFACES}.normal should have the normal instructions, perhaps like:
+
+    iface wlan0 inet manual
+    wpa-roam /etc/wpa_supplicant/wpa_supplicant.conf
+    iface default inet dhcp
+
+(In both cases, there will be other lines above that.)
+EOF
+    	exit 1
+    fi
+}
+
+# function to make sure we have sudo access without a password.  User is
+# expected to run sudo -v before running this script, or else to run this
+# script under sudo.  We do this to ensure trust that we're not stealing the
+# password.  (I have a tendency not to trust password prompts I don't know I
+# asked for, or which exact command is being run that causes the prompt.)
+validate_sudo() {
+    if sudo -n -v
+    then
+	:
+    else
+	echo "Please run sudo -v first, to establish password readiness."
+	exit 1
+    fi
+}
+
+# toggle in the appropriate interfaces file.  Note that we potentially destroy
+# the extant copy!  - we'll back it up at least once.
+toggle_interfaces_file() {
+    case "$1" in
+	ap|normal)
+	    # first, check to see if we need a backup:
+
+	    if [ $1 = normal ] && diff ${INTERFACES} ${INTERFACES}.ap >/dev/null
+	    then
+	    	: # we're switching away from ap, and same, so all good.
+	    elif [ $1 = ap ] && diff ${INTERFACES} ${INTERFACES}.normal >/dev/null
+	    then
+	    	:
+	    else
+		# if we don't have a backup, just make it:
+		if [ ! -f ${INTERFACES}.bak ]
+		then
+		    sudo cp ${INTERFACES} ${INTERFACES}.bak
+		# otherwise, we check it...  and we let this diff output show:
+		elif diff -u ${INTERFACES}.bak ${INTERFACES}
+		then
+		    # do nothing if it's the same:
+		    :
+		else
+		    # otherwise let the user decide whether to over-write, having seen the diff:
+		    sudo cp -i ${INTERFACES} ${INTERFACES}.bak
+		    # but bail if we didn't copy:
+		    if diff ${INTERFACES} ${INTERFACES}.bak >/dev/null
+		    then
+		    	:
+		    else
+			echo "Sorry, don't know how to back up your $INTERFACES file.  Please do so, and try again." >&2
+		    	exit 1
+		    fi
+		fi
+	    fi
+
+            # finally, put the appropriate mode-based file into place:
+	    sudo cp -f ${INTERFACES}.$1 ${INTERFACES}
+	    ;;
+	*)
+	    # shouldn't ever happen, but just in case:
+	    echo "Error: unknown target mode $1 for toggle_interfaces_file" >&2
+	    exit 1
+    esac
+}
+
+# (Attempt to...) Figure out what mode we're currently in:
+current_mode() {
+    # just some very primitive checks, for now:
+    # TODO: more elaborate checks?
+
+    # if we have a start script for hostapd, assume ap mode:
+    if [ -f /etc/rc2.d/S01hostapd ]
+    then
+	echo "ap"
+    # or if our interfaces file is the same as the normal one, assume that:
+    elif diff $INTERFACES $INTERFACES.normal >/dev/null 2>&1
+    then
+    	echo "normal"
+    # otherwise, we don't really know:
+    else
+	echo "unknown-TBD"
+    fi
+}
+
+
+# Target mode is whatever the other mode is:
+target_mode() {
+    case "`current_mode`" in
+	ap)
+	    echo "normal"
+	    ;;
+	normal)
+	    echo "ap"
+	    ;;
+	*)
+	    echo "unknown"
+	    ;;
+    esac
+}
+
+# some mode settings are speciic enough to separate them out:
+set_ap_mode() {
+    sudo update-rc.d hostapd enable
+    sudo update-rc.d isc-dhcp-server enable
+    sudo service hostapd start
+    sudo service isc-dhcp-server start
+}
+set_normal_mode() {
+    sudo service hostapd stop
+    sudo service isc-dhcp-server stop
+    sudo update-rc.d hostapd disable
+    sudo update-rc.d isc-dhcp-server disable
+}
+
+# some are common to both:
+set_mode() {
+    case "$1" in
+	ap|normal)
+	    validate_interfaces
+	    validate_sudo
+	    echo "==> Switching into $1 mode."
+	    sudo ifdown wlan0
+	    toggle_interfaces_file $1
+	    set_${1}_mode
+	    sudo /etc/init.d/networking reload
+
+	    # I'm not sure why I need this, but I seem to:
+	    sleep 1
+	    sudo ifdown wlan0
+	    sleep 1
+	    sudo ifup wlan0
+	    sleep 1
+
+	    echo "==> Should now be in $1 mode."
+	    ;;
+	*)
+	    echo "Unknown mode to set: $1.  Try '$0 ap' or '$0 normal' to get into a known state." >&2
+	    exit 1
+	    ;;
+    esac
+}
+
+case "${1:-`target_mode`}" in
+    on|ap)
+	set_mode ap
+	;;
+    off|normal)
+	set_mode normal
+	;;
+    state|status)
+    	echo "Currently estimated to be in: `current_mode` mode."
+	;;
+    *)
+	echo "Don't know which mode you want (current mode is `current_mode`).  Try '$0 ap' or '$0 normal'"
+	;;
+esac
