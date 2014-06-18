@@ -10,7 +10,7 @@
 # found... and yet, it can find it this way:
 ssh=`which ssh`
 
-# If we haven't specified any remots on the command-line, default to 'origin':
+# If we haven't specified any remotes on the command-line, default to 'origin':
 if [ -z "$*" ]
 then
     set -- origin
