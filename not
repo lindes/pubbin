@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# not -- negate the exit-status meaning of a command
+# (non-zero becomes zero; zero becomes non-zero)
+
+# (useful in things like shell while loops, for running until a command finally succeeds.)
+# : eg; while not ping -c 3 somehost; do date; sleep 10; done
+
+# run the command we were given as args:
+"$@"
+
+# and exit with a negated exit code, by `test`ing it against equality
+# with 0:
+[ $? != 0 ]
+# then exiting with the return value of the test:
+exit $?
