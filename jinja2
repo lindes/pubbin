@@ -1,0 +1,32 @@
+#!/usr/bin/python
+
+# jinja2 - a simple command-line front-end for checking jinja2 templates
+
+import sys, jinja2
+
+if len(sys.argv) < 2:
+    sys.stderr.write("Usage: %s <template-file> [<var>=<value> ...]\n");
+    sys.exit(1)
+
+# first arg is template:
+template = sys.argv[1]
+
+vars = {}
+
+# any additional arguments get stuffed into the vars hash:
+if len(sys.argv) > 2:
+    for arg in sys.argv[2:]:
+	var,value = arg.split('=')
+	if not var or not value:
+	    sys.stderr.write("Couldn't recognize <<%s>> as variable assignment")
+	# TODO: add some sort of eval or something, to handle lists or such?
+	vars[var] = value
+
+# and finally we set up to load a template...:
+jenv = jinja2.Environment(loader = jinja2.FileSystemLoader(searchpath = '.'))
+
+# ... load it, ...:
+t = jenv.get_template(template)
+
+# ... and run it:
+print t.render(vars)
