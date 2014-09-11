@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# fatsync - Wrapper around rsync to add an option I commonly like to use
+# when syncing to FAT filesystems, but which is long and cumbersome
+# enough to type that I don't want to have to type it all the time.
+# (Or more to the point, I don't want to have to remember what it is.)
+
+# --modify-window=1 allows modification times to differ by up to
+# 1 second without re-syncing a file.  This is great when syncing to
+# a FAT filesystem (e.g. a USB thumb drive).
+
+exec rsync --modify-window=1 "$@"
