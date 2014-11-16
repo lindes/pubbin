@@ -1,0 +1,135 @@
+#!/bin/sh
+
+# vagrant-rebox - repackage a Vagrant box, to capture modifications
+
+# Intended to make it possible to more quickly boot a vagrant VM that's
+# been partially provisioned (or updated, or similar).  One can then
+# change (or have the script change) the config.vm.box line to the newly
+# captured box, and you'll now have a VM with a starting point of where
+# your provisioned/updated box was, thus avoiding long delays in startup
+# of a vagrant instance, at least of a particularly avoidable kind.
+
+# Copyright 2014 by David Lindes.  All rights reserved.
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# This program is based loosely (and in part) on the instructions here,
+# for which I am thankful:
+# http://abhishek-tiwari.com/hacking/creating-a-new-vagrant-base-box-from-an-existing-vm
+
+# default value for vmname:
+vmname=default
+
+usage() {
+    cat <<EOF >&2
+usage: $0 [-f] [-u] [-v <vmname>] boxname
+
+Mandatory argument:
+
+    boxname - specify the name for the new vagrant box
+
+Options:
+
+    -f           - force - clobber an existing vagrant box, if extant
+    -u           - update - attempt to modify Vagrantfile to use the new box
+    -v <vmname>  - specify then name (instead of "$vmname") of the
+                   vagrant VM to use as a baseline.
+EOF
+}
+
+run() {
+    echo "-- Running: $*"
+    "$@"
+}
+
+read_vbox_id() {
+    box="$1"
+
+    idfile=".vagrant/machines/$box/virtualbox/id"
+    if [ ! -f "$idfile" ]
+    then
+	echo "Sorry, Couldn't find VirtualBox id for $box: $idfile doesn't exist" >&2
+	exit 1
+    fi
+
+    cat "$idfile"
+}
+
+get_vbox_name() {
+    # this actually seems easier, in shell, than showvminfo --machinereadable
+    VBoxManage showvminfo "$1" | awk '$1 == "Name:" {print $2}'
+}
+
+
+force_arg=""
+update=false
+
+while getopts fuv: opt; do
+    case "$opt" in
+	f) force_arg="--force";;
+	u) update=true;;
+	v) vmname="$OPTARG";;
+    esac
+done
+shift $((OPTIND - 1))
+
+output="$1"; shift
+
+# make sure we have an output file specified:
+# TODO: some sort of sanity check on the name?
+if [ -z "$output" ]; then
+    usage
+    exit 1
+fi
+
+# we don't know what to do with extra arguments; bail:
+if [ ! -z "$*" ]; then
+    echo "Extra arguments: $*" >&2
+    usage
+    exit 1
+fi
+
+tmpbox="/tmp/vrb-$output.box"
+
+if [ -f "$tmpbox" ]; then
+    echo "Sorry, $tmpbox already exists.  Please remove if you wish to overwrite."
+    exit 1
+fi
+
+id=$(read_vbox_id $vmname)
+if [ $? != 0 ]; then exit $?; fi
+
+echo "Looking for information on box $vmname ($id)..."
+
+# this isn't strictly necessary (using --base $id would work), but it
+# makes it more user-friendly in its output:
+vboxname=$(get_vbox_name "$id")
+echo "- Found vbox name: $vboxname"
+
+echo "- Packaging $vboxname as $tmpbox:"
+run vagrant package --base "$vboxname" --output "$tmpbox"
+echo "- Adding $tmpbox as $output:"
+run vagrant box add $force_arg "$output" "$tmpbox"
+rm -f "$tmpbox"
+
+if $update; then
+    echo "- Attempting to modify Vagrantfile to use $output:"
+    echo "  Before: \c"
+    pcregrep '(?<!#)vm.box\s*=\s*".*"' Vagrantfile
+    # hmm, I think I won't do this under `run`... best with just
+    # before/after, it seems to me:
+    perl -pi.vagrant-rebox-backup -e 's/^(\s*\w+\.vm\.box\s*=\s*").*"/$1'"$output"'"/' Vagrantfile
+    echo "  After:  \c"
+    pcregrep '(?<!#)vm.box\s*=\s*".*"' Vagrantfile
+fi

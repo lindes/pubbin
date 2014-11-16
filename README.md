@@ -32,6 +32,11 @@ Pull requests, bug reports, and more are welcome, using
 * `toggle-pi-ap-mode` - toggles Access Point mode on a Raspberry Pi
   (with the help of some initial setup)
 
+* `vagrant-rebox` - repackages a vagrant instance as a new box for
+  vagrant, which can then be used as a baseline that's likely closer to
+  your expected starting point, thus requiring less work (and less time
+  spent) in the provisioning phase.
+
 ## License
 
 All programs within this git repository are free software: you can
