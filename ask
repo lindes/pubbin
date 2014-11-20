@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# ask - simple prompting utility, to ask a question, and check user response
+
+while /bin/echo -n "$* "
+do
+    read response
+    case "$response" in
+	[Yy]|[Yy][Ee][Ss]) exit 0;;	# true
+	[Nn]|[Nn][Oo]) exit 1;;		# false
+	*)
+	    echo "Please answer either [Y]es or [N]o."
+	    ;; # will then repeat the question
+    esac
+done
