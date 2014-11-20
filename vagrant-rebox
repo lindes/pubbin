@@ -68,7 +68,7 @@ read_vbox_id() {
 
 get_vbox_name() {
     # this actually seems easier, in shell, than showvminfo --machinereadable
-    VBoxManage showvminfo "$1" | awk '$1 == "Name:" {print $2}'
+    VBoxManage showvminfo "$1" | awk 'NR == 1 {print $2}'
 }
 
 
@@ -117,6 +117,9 @@ echo "Looking for information on box $vmname ($id)..."
 vboxname=$(get_vbox_name "$id")
 echo "- Found vbox name: $vboxname"
 
+# exit on errors:
+set -e
+
 echo "- Packaging $vboxname as $tmpbox:"
 run vagrant package --base "$vboxname" --output "$tmpbox"
 echo "- Adding $tmpbox as $output:"
@@ -126,10 +129,10 @@ rm -f "$tmpbox"
 if $update; then
     echo "- Attempting to modify Vagrantfile to use $output:"
     echo "  Before: \c"
-    pcregrep '(?<!#)vm.box\s*=\s*".*"' Vagrantfile
+    pcregrep '^\s*\w+\.vm.box\s*=\s*".*"' Vagrantfile
     # hmm, I think I won't do this under `run`... best with just
     # before/after, it seems to me:
     perl -pi.vagrant-rebox-backup -e 's/^(\s*\w+\.vm\.box\s*=\s*").*"/$1'"$output"'"/' Vagrantfile
     echo "  After:  \c"
-    pcregrep '(?<!#)vm.box\s*=\s*".*"' Vagrantfile
+    pcregrep '^\s*\w+\.vm.box\s*=\s*".*"' Vagrantfile
 fi
