@@ -1,0 +1,62 @@
+#!/usr/bin/env ruby
+
+# multiping - ping multiple hosts, give concise feedback on status
+
+# Copyright 2014 by David Lindes.  All rights reserved.
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+require 'net/ping'
+require 'term/ansicolor'
+require 'io/console'
+
+include Term::ANSIColor
+
+hosts=ARGV
+
+terminalwidth = IO.console.winsize[1] # TODO: make configurable?
+padsize = 2 # TODO: make configurable?
+
+threads = []
+status  = {}
+
+pinger = Net::Ping::External.new()
+
+hosts.each do |h|
+  # stagger pings slightly so we don't flood all outgoing packets all at once (this seems to make things much
+  # more reliable (even with this small delay), especially for commands with large numbers of hosts specified):
+  # (without this, I was getting a lot of false negatives.  n.b.: this number may yet need tuning.)
+  sleep(0.008) # TODO: make configurable?
+
+  threads << Thread.new { status[h] = pinger.ping?(h, 10, 0.2, 1) } # host, count, interval, timeout
+end
+
+threads.each { |thr| thr.join }
+
+# compute table dimensions:
+maxlen = hosts.map {|h| h.length}.max
+columns = terminalwidth / (maxlen + padsize)
+
+# print the table:
+hosts.each_slice(columns) do |slice|
+  print slice.map {|h| (status[h] ? h.green : h.red) + " " * (maxlen - h.length)}.join(" " * padsize), "\n"
+end
+
+# summary:
+successes = hosts.count {|h| status[h]}
+total = hosts.count
+
+printf "Got to %d hosts out of %d, %0.2f%% success rate.\n", successes, total, 100.0*successes/total
+
+exit successes == total ? 0 : 1
