@@ -20,6 +20,7 @@
 require 'net/ping'
 require 'term/ansicolor'
 require 'io/console'
+require 'resolv'
 
 include Term::ANSIColor
 
@@ -29,6 +30,7 @@ terminalwidth = IO.console.winsize[1] # TODO: make configurable?
 padsize = 2 # TODO: make configurable?
 
 threads = []
+resolution  = {}
 status  = {}
 
 pinger = Net::Ping::External.new()
@@ -39,7 +41,10 @@ hosts.each do |h|
   # (without this, I was getting a lot of false negatives.  n.b.: this number may yet need tuning.)
   sleep(0.008) # TODO: make configurable?
 
-  threads << Thread.new { status[h] = pinger.ping?(h, 10, 0.2, 1) } # host, count, interval, timeout
+  threads << Thread.new {
+    status[h] = pinger.ping?(h, 10, 0.2, 1)
+    resolution[h] = Resolv.getaddresses(h).any?
+  } # host, count, interval, timeout
 end
 
 threads.each { |thr| thr.join }
@@ -50,7 +55,10 @@ columns = terminalwidth / (maxlen + padsize)
 
 # print the table:
 hosts.each_slice(columns) do |slice|
-  print slice.map {|h| (status[h] ? h.green : h.red) + " " * (maxlen - h.length)}.join(" " * padsize), "\n"
+  print slice.map {|h|
+    str = (status[h] ? h.green : resolution[h] ? h.red : h.magenta)
+    str + " " * (maxlen - h.length)
+  }.join(" " * padsize), "\n"
 end
 
 # summary:
