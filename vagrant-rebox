@@ -43,8 +43,8 @@ Options:
 
     -f           - force - clobber an existing vagrant box, if extant
     -u           - update - attempt to modify Vagrantfile to use the new box
-    -v <vmname>  - specify then name (instead of "$vmname") of the
-                   vagrant VM to use as a baseline.
+    -v <vmname>  - specify the name (instead of "$vmname") of the vagrant VM
+                   to use as a baseline.
 EOF
 }
 
