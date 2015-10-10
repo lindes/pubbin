@@ -129,10 +129,10 @@ rm -f "$tmpbox"
 if $update; then
     echo "- Attempting to modify Vagrantfile to use $output:"
     echo "  Before: \c"
-    perl -ne 'print if /^\s*\w+\.vm.box\s*=\s*".*"/' Vagrantfile
+    perl -ne 'print if /^\s*\w+\.vm.box\s*=\s*["'\''].*["'\'']/' Vagrantfile
     # hmm, I think I won't do this under `run`... best with just
     # before/after, it seems to me:
-    perl -pi.vagrant-rebox-backup -e 's/^(\s*\w+\.vm\.box\s*=\s*").*"/$1'"$output"'"/' Vagrantfile
+    perl -pi.vagrant-rebox-backup -e 's/^(\s*\w+\.vm\.box\s*=\s*["'\'']).*["'\'']/$1'"$output"'"/' Vagrantfile
     echo "  After:  \c"
-    perl -ne 'print if /^\s*\w+\.vm.box\s*=\s*".*"/' Vagrantfile
+    perl -ne 'print if /^\s*\w+\.vm.box\s*=\s*["'\''].*["'\'']/' Vagrantfile
 fi
