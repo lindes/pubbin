@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-# protractor.rb -- generate a PDF protractor for printing
+# gen-protractor-pdfs -- generate a PDF protractor for printing
 
 # Note: will drop PDF files in your current working directory, so run
 # this where you want the files (and where you won't mind overwriting
