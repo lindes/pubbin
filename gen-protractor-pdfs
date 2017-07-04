@@ -1,0 +1,140 @@
+#!/usr/bin/env ruby
+
+# protractor.rb -- generate a PDF protractor for printing
+
+# Note: will drop PDF files in your current working directory, so run
+# this where you want the files (and where you won't mind overwriting
+# any files that would happen to match the generated filenames).
+
+license = '''
+Copyright 2017 by David Lindes.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+'''
+
+# `gem install prawn` if you don't already have these:
+require 'prawn'
+require 'prawn/measurement_extensions'
+
+# ( ref. http://prawnpdf.org/docs/0.11.1/Prawn/Document/PageGeometry.html )
+# Generating a PDF for each of a few page sizes; adjust if you don't
+# want all of them or need something else.
+%w(LETTER A4 A6 4x6).each do |size|
+
+  # 4x6 isn't an official size, so make it from points:
+  real_size = size
+  real_size = [72 * 4, 72 * 6] if size == '4x6'
+
+  # choose how far we want to go in from the edges:
+  margin = 4.mm
+
+  # now generate the document(s):
+  Prawn::Document.generate("protractor-#{size}.pdf",
+			   :page_size => real_size,
+			   # 4mm should accomodate text; adjust as needed:
+			   :margin => margin) do
+
+    # everything in metric (mm-based) from here on out:
+    scale(1.mm) do
+
+      # going with a size that'll fit on the 4x6 (and also,
+      # incidentally, because the particular use case I originally wrote
+      # this for called for something about like this):
+      radius = 40
+
+      # Decide how wide we want our *thickest* (angle multiples of 10)
+      # lines to be.  All other lines will be a fraction of this:
+      base_lw = 0.1
+
+      # draw within margins for printing safety:
+      translate radius, bounds.top/1.mm - radius - margin do
+
+	# loop through our angles:
+	(0..359).each do |angle|
+	  rotate(angle, :origin => [0,0]) do
+
+	    # choose line width to mark 5 and 10 degree multiples
+	    # heavier than other angles; smaller for sub-divisions::
+	    lw = case angle % 10
+	      when 0; base_lw
+	      when 5; base_lw / 2
+	      else; base_lw / 5
+	    end
+
+	    # nota bene: when line thickness overlaps, we get unreadable
+	    # angles. As such, make line widths thinner towards the
+	    # middle of the circle -- also, don't go all the way to the
+	    # center (for most lines; see below).
+	    (1..8).each do |fraction|
+	      # also skip odd degrees near the center, for added clarity:
+	      next if fraction > 6 and angle % 2 != 0
+
+	      line [radius/(fraction+1), 0], [radius/fraction, 0]
+	      line_width lw/fraction
+	      stroke
+	    end
+
+	    # For precision, add a little tiny always-thin hairline at
+	    # the outside edge of each degree mark, and also going
+	    # inward all the way to the center for 90-degree divisions,
+	    # as a reference for finding the center of the circle:
+	    inside = case angle % 90
+	      when 0; 0
+	      else; radius
+	    end
+
+	    line [inside, 0], [radius+0.4, 0]
+	    line_width base_lw/10
+	    stroke
+
+	    # Near the edges, we also add sub-marks for quarter- and
+	    # half-degree angles:
+	    (1..3).each do |i|
+	      rotate(i.to_f/4, :origin => [0,0]) do
+		lw,edge = case i
+		  when 1,3; [base_lw/8, 0.2]
+		  else; [base_lw/6, 0.1]
+		end
+
+		line [4*radius/5 + edge, 0], [radius - edge, 0]
+		line_width lw
+		stroke
+	      end
+	    end
+
+	    # Finally, we display the angle as text every 5 degrees:
+	    font_size = 2
+	    if angle % 5 == 0
+	      # trying to match the text to the angle marks, for
+	      # aestethic/readability reasons.  Arbitrarily picking the
+	      # middle bar of the 3s to match to, number chosen by trial
+	      # and error:
+	      descender = -font_size/2.75
+	      draw_text angle.to_s, :at => [radius + 1, descender], :size => font_size
+	    end
+
+	  end # rotate for per-degree
+	end # angle loop
+      end # translate
+    end # scale
+  end # document
+end # size itteration
