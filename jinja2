@@ -2,7 +2,7 @@
 
 # jinja2 - a simple command-line front-end for checking jinja2 templates
 
-import sys, jinja2
+import sys, jinja2, re, importlib
 
 if len(sys.argv) < 2:
     sys.stderr.write("Usage: %s <template-file> [<var>=<value> ...]\n");
@@ -16,11 +16,27 @@ vars = {}
 # any additional arguments get stuffed into the vars hash:
 if len(sys.argv) > 2:
     for arg in sys.argv[2:]:
-	var,value = arg.split('=')
-	if not var or not value:
-	    sys.stderr.write("Couldn't recognize <<%s>> as variable assignment")
-	# TODO: add some sort of eval or something, to handle lists or such?
-	vars[var] = value
+        var,value = arg.split('=')
+        if not var or not value:
+            sys.stderr.write("Couldn't recognize <<%s>> as variable assignment")
+
+        # special case for something that looks importable -- for
+        # example, with var=foo.bar.baz, import foo.bar and then the baz
+        # item from it, setting var to that.
+        # TODO: do we need to be more loose with names here than \w?
+        if re.match('^\w+(\.\w+)+$', value):
+            names = value.split('.')
+            modname = '.'.join(names[:-1])
+            symname = names[-1]
+
+            module = importlib.import_module(modname)
+            value = module.__dict__[symname]
+
+        # TODO: also add some sort of eval or something, to handle lists
+        # or such?  I'm wary of evaling arbitrary strings, so this is
+        # for later.
+
+        vars[var] = value
 
 # and finally we set up to load a template...:
 jenv = jinja2.Environment(loader = jinja2.FileSystemLoader(searchpath = '.'))
