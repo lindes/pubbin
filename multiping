@@ -26,6 +26,11 @@ include Term::ANSIColor
 
 hosts=ARGV
 
+if hosts.empty? then
+  STDERR.puts "Please provide one or more hosts to ping."
+  exit 1
+end
+
 terminalwidth = IO.console.winsize[1] # TODO: make configurable?
 padsize = 2 # TODO: make configurable?
 
