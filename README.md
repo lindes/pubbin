@@ -51,7 +51,8 @@ echo 'export PATH="$PATH:$HOME/lindes-bin/"' >> ~/.${SHELL#/bin/}rc
   when you're creating a new repo to push to - creates a bare repo
   according to a remote-spec already added with `git remote add ...`.)
 
-* `is_plaintext` - check to see if file content is plain text
+* `is_plaintext` - check to see if a file (or files, and/or standard
+  input) is "plain text" -- uses `file --mime-type` to figure that out.
 
 * `jinja2` - a simple command-line front-end for checking jinja2 templates.
 
@@ -69,9 +70,6 @@ echo 'export PATH="$PATH:$HOME/lindes-bin/"' >> ~/.${SHELL#/bin/}rc
   vagrant, which can then be used as a baseline that's likely closer to
   your expected starting point, thus requiring less work (and less time
   spent) in the provisioning phase.
-
-* `is_plaintext` - check to see if a file (or files, and/or standard
-  input) is "plain text" -- uses `file --mime-type` to figure that out.
 
 ## License
 
