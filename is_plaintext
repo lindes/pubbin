@@ -1,0 +1,49 @@
+#!/bin/sh
+
+# is_plaintext -- check if file(s) contain only plain text
+
+# exits with exit status 0 if (all) file(s) listed on the command line
+# (or stdin if none listed) match a 'text' type (not images, sound
+# files, or whatever other sorts of "binary" data).
+
+# meant to be used with other scripts and things, e.g. with zsh file
+# expansion, a la: ls */*(e:'is_plaintext $REPLY':)
+
+# (NOTE: use of the above (or similar) could take a _very_ long time in
+# a directory with lots of files; unfortunately, this command involves
+# forking multiple processes for every file the shell tries to expand...)
+
+# if no arguments specified, set arglist to '-' (stdin):
+if [ -z "$*" ]
+then
+    set -- -
+fi
+
+# explaining the 4 lines of code below this comment block::
+#
+# 1. get filetype for all args (or -)    (if file ...)
+# 2. strip to first half of mime type    (sed -n -e ...)
+#
+#    for example:
+#       this                                   becomes
+#       -----------------------------------    -----------
+#       somefile:  text/plain                  text
+#       somefile3: application/octet-stream    application
+#       script.py: text/x-python               text
+# 
+# 3. print if it's *not* exactly 'text'  (-e .../!p)
+# 4. check to see if we found anything   (grep -q .)
+#
+# Ultimately, step 4 is the exit status we're checking -- to see if it
+# found anything in what sed printed, which excluded the entries which
+# were simply text.  We want it to *not* find anything.
+
+if file --mime-type "$@" | \
+    sed -n -e 's#.*: *\([a-z]*\)/.*#\1#' \
+	   -e '/^text$/!p' | \
+    grep -q .
+then
+    exit 1 # grep found something; not everything is text.
+else
+    exit 0 # nothing but text, signal truth.
+fi
