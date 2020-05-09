@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# bigfiles - display big files on a mac system.
+
+onlyin=~
+gigs=4
+
+# search for files larger than $gigs gigs, and report in du.
+# TODO: getopt-ize this.  These are defaults that get me what I cared
+# about in the moment, though, and capturing for others to use.
+mdfind -onlyin "$onlyin" "kMDItemLogicalSize > `expr $gigs \* 1024 \* 1024 \* 1024`" -0 | xargs -0 du -hsc

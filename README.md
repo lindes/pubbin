@@ -34,6 +34,9 @@ echo 'export PATH="$PATH:$HOME/lindes-bin/"' >> ~/.${SHELL#/bin/}rc
 * `ask` - prompt for a simple yes/no answer, loop and provide exit
   status to indicate response.
 
+* `bigfiles` - a (very) simple wrapper around `mdfind` (a MacOS thing)
+  and `du` to report on large files in the user's home directory.
+
 * `fatsync` - a *very* simple wrapper around `rsync` to make it more
   friendly to
   [FAT](https://en.wikipedia.org/wiki/File_Allocation_Table)
