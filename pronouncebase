@@ -1,0 +1,142 @@
+#!/usr/bin/env ruby
+
+# pronouncebase - give an easy pronounciation for a base-n number...
+
+# This is using (and defining) a quirky little system derived from:
+#   https://bartshmatthew.medium.com/a-super-easy-way-to-pronounce-binary-numbers-and-numbers-in-some-other-number-bases-4778efb1ef03
+# ... as discovered via:
+#   https://twitter.com/BartshMatthew/status/1371281122177417220
+# This system and that system in turn are both based in part on:
+#   https://en.wikipedia.org/wiki/Mnemonic_major_system
+# It has been modified to, for binary, just produce the powers-of-two-based
+# mnemonics outlined in the document, and for a limited set of other bases,
+# assign a vowel suffix for the mnemonic-major-system prefix for the
+# corresponding digit, pronuncing first the power of the base, and then the
+# digit in question.  In either case, all zero digits are skipped from
+# pronunciation (except in the special case where the whole number is
+# zero, in which case that's the pronunciation).
+
+# Copyright 2021 by David Lindes.  All rights reserved.
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+require 'optparse'
+
+options = {
+  verbose: false,
+  inbase: nil,
+  outbase: 5,
+}
+
+# each item is one or more alternatives... we'll usually use the first, but
+# future code may choose otherwise.
+$mnemonics = [
+  %w(s z), # 0
+  %w(t d), # 1
+  %w(n), # 2
+  %w(m), # 3
+  %w(r), # 4
+  %w(l), # 5
+  %w(ch j), # 6
+  %w(k q), # 7
+  %w(f ph), # 8
+  %w(p b), # 9
+]
+
+# Vowels for the different bases... and their justifications:
+$basevowels = {
+  2 => 'i', # per the BartshMatthew doc
+  5 => 'a', # I dunno, it just seemed reosanoble somehow
+  7 => 'u', # ?!? - I was asked for a 7 example, and u was available
+  8 => 'o', # o for octal
+  # note: pronunciation of i and e are likely ambiguous, so... that's it?
+  # Without much thought, I've created a de-facto standard... I hope
+  # it serves well.  Of course, it could be modified in any of various ways
+  # (including longer suffixes), I just hope that if anyone decides to do
+  # so, they either do so promptly, or in a backwards-compatible way, lest
+  # the possibility for ambiguity arrise.
+}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: pronouncebase [options] <number> [<number> ...]"
+
+  opts.on("-bBASE", "--base=BASE", OptionParser::DecimalInteger,
+    "Select output base (default: 5)") do |inbase|
+    options[:outbase] = inbase
+  end
+  opts.on("-BBASE", "--input-base=BASE", OptionParser::DecimalInteger,
+      "Select input base (for translating" +
+      "\n\t\t\t\t     between bases, defaults to input base)") do |outbase|
+    options[:inbase] = outbase
+  end
+end.parse!
+
+if options[:inbase].nil?
+  options[:inbase] = options[:outbase]
+end
+
+def gen_pronunciation(n, base)
+  return "zero" if n == 0
+
+  vowel = $basevowels[base]
+  rep = n.to_s(base)
+  digits = rep.split("")
+  maxexp = digits.length - 1
+  # TODO: avriant selection for mnemonics, based on... avoiding
+  # certain words or such?
+  mnemonics = []
+  digits.each_with_index do |digit, i|
+    next if digit == '0' # we skip zeros...
+    power = maxexp - i
+    powermnemonic = "#{$mnemonics[power][0]}i"
+    digitmnemonic = if base == 2 then
+      "" # for binary, only pronunce the base powers
+    else
+      "#{$mnemonics[digit.to_i(base)][0]}#{vowel}"
+    end
+    mnemonic = powermnemonic + digitmnemonic
+    mnemonics.push(mnemonic)
+    # puts "DEBUG: #{digit}, #{i}, #{power}, #{mnemonic}"
+  end
+  "DEBUG: digits=#{digits}, maxexp=#{maxexp}, #{mnemonics}"
+  mnemonics.join(" ")
+end
+
+if ARGV.empty?
+  warn "Please specify one or more numbers to pronounce."
+  exit(64) # EX_USAGE
+end
+
+# header/legend:
+if(options[:inbase] == options[:outbase]) then
+  puts "input => decimal/hex/octal => pronunciation"
+else
+  puts "input => decimal/hex/octal/target => pronunciation"
+end
+
+ARGV.each do |num|
+  number = num.to_i(options[:inbase])
+  # inrep = "#{num}b#{options[:inbase]}"
+  hex = "0x#{number.to_s(16)}"
+  oct = "0#{number.to_s(8)}"
+  target = if(options[:inbase] == options[:outbase]) then
+    ""
+  else
+    "/#{number.to_s(options[:outbase])}b#{options[:outbase]}"
+  end
+  pronunciation = gen_pronunciation(number, options[:outbase])
+  puts "#{num} (b#{options[:inbase]}) => " +
+      "#{number}/#{hex}/#{oct}#{target} => " +
+      pronunciation
+end
