@@ -72,13 +72,13 @@ OptionParser.new do |opts|
   opts.banner = "Usage: pronouncebase [options] <number> [<number> ...]"
 
   opts.on("-bBASE", "--base=BASE", OptionParser::DecimalInteger,
-    "Select output base (default: 5)") do |inbase|
-    options[:outbase] = inbase
+    "Select output base (default: 5)") do |outbase|
+    options[:outbase] = outbase
   end
   opts.on("-BBASE", "--input-base=BASE", OptionParser::DecimalInteger,
       "Select input base (for translating" +
-      "\n\t\t\t\t     between bases, defaults to input base)") do |outbase|
-    options[:inbase] = outbase
+      "\n\t\t\t\t     between bases, defaults to output base)") do |inbase|
+    options[:inbase] = inbase
   end
 end.parse!
 
