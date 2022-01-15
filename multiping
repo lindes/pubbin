@@ -42,34 +42,34 @@ status  = {}
 
 pinger = Net::Ping::External.new()
 
-hosts.each do |h|
+hosts.each do |host|
   # stagger pings slightly so we don't flood all outgoing packets all at once (this seems to make things much
   # more reliable (even with this small delay), especially for commands with large numbers of hosts specified):
   # (without this, I was getting a lot of false negatives.  n.b.: this number may yet need tuning.)
   sleep(0.008) # TODO: make configurable?
 
   threads << Thread.new {
-    status[h] = pinger.ping?(h, 10, 0.2, 1)
-    resolution[h] = Resolv.getaddresses(h).any?
+    status[host] = pinger.ping?(host, 10, 0.2, 1)
+    resolution[host] = Resolv.getaddresses(host).any?
   } # host, count, interval, timeout
 end
 
 threads.each { |thr| thr.join }
 
 # compute table dimensions:
-maxlen = hosts.map {|h| h.length}.max
+maxlen = hosts.map {|host| host.length}.max
 columns = terminalwidth / (maxlen + padsize)
 
 # print the table:
 hosts.each_slice(columns) do |slice|
-  print slice.map {|h|
-    str = (status[h] ? h.green : resolution[h] ? h.red : h.magenta)
-    str + " " * (maxlen - h.length)
+  print slice.map {|host|
+    str = (status[host] ? host.green : resolution[host] ? host.red : host.magenta)
+    str + " " * (maxlen - host.length)
   }.join(" " * padsize), "\n"
 end
 
 # summary:
-successes = hosts.count {|h| status[h]}
+successes = hosts.count {|host| status[host]}
 total = hosts.count
 
 printf "Got to %d hosts out of %d, %0.2f%% success rate.\n", successes, total, 100.0*successes/total
