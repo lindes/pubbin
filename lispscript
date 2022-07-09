@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# lispscript - a wrapper for #! lines to use a quicklisp-enabled lisp
+
+# Note: this currently assumes (and requires) sbcl, and also requires it
+# to have been configured (via .sbclrc) to know about quicklisp already.
+
+# In principle, this could be expanded to allow other lisps, but that's
+# what I'm using, so that's all it supports for now.
+
+COREDIR=$HOME/tmp
+CORE=$COREDIR/ql-sbcl.core
+
+# Create ~/tmp (or whatever COREDIR is changed to) if needed:
+if [ ! -d "${COREDIR}" ]
+then
+    mkdir -p "${COREDIR}" || exit 1
+fi
+
+# If we don't already have an SBCL core file saved, create one:
+if [ ! -f "${CORE}" ]
+then
+    echo "Note: Building new ${CORE}." >&2
+    sbcl --noinform \
+	--eval "(ql:quickload 'quicklisp :silent t)" \
+	--eval "(sb-ext:save-lisp-and-die \"${CORE}\")"
+fi
+
+# Generate a warning if we haven't passed any arguments:
+if [ -z "$*" ]
+then
+    echo "Warning: processing stdin as input" >&2
+fi
+
+# Actually run the script, using the saved core image:
+exec sbcl --noinform --core "${CORE}" --script "$@"

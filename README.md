@@ -59,6 +59,10 @@ echo 'export PATH="$PATH:$HOME/lindes-bin/"' >> ~/.${SHELL#/bin/}rc
 
 * `jinja2` - a simple command-line front-end for checking jinja2 templates.
 
+* `lispscript` - a shebang (`#!`) line interpreter to allow for easy
+  creation of common-lisp scripts (using sbcl and quicklisp, with
+  a pre-built startup ("core") file, for speedy startup.)
+
 * `multiping` - ping multiple hosts and report a table of color-coded
   results.
 
