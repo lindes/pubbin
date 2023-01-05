@@ -1,0 +1,97 @@
+#!/usr/bin/ruby
+
+# wh - like "which", but a bit more verbose, and less typing.
+
+# Note that this doesn't have the capacity to handle aliases and such,
+# like the shell builtin can in some shells.  It merely looks to $PATH,
+# and shows where various commands could be found.  If one wants to know
+# where the shell is actually pulling something from, use a shell
+# builtin for that (e.g. 'whence -v' in zsh).
+
+# adding some color.  I could use the colorize gem, but I don't want the
+# dependency, and I _do_ want the tty checking... so...
+class String
+  def _conditional_color(n)
+    STDOUT.tty? ? "\e[#{n}m#{self}\e[m" : self
+  end
+  def green;  _conditional_color(32) end
+  def yellow; _conditional_color(33) end
+  def cyan;   _conditional_color(36) end
+end
+
+if ARGV.empty?
+  STDERR.puts "Usage: #{$0} <command> [<command> ...]"
+  exit 64 # EX_USAGE
+end
+
+# get a unique list of locations in $PATH, making sure they include
+# a './' if needed.
+paths = ENV['PATH'].split(':').uniq.map {|p|
+  # prepend ./ to any empty or not-fully-qualified paths:
+  if p.length > 0 and p[0] == '/'
+    p
+  else
+    "./#{p}"
+  end
+}
+
+# message for commands found in more than one location in $PATH:
+dupmessage = "not first in path, but present".yellow
+
+# handle each argument as a thing to query
+ARGV.each do |command|
+  # track whether this is the first instance of this command within
+  # $PATH, so we can report differently on duplicates:
+  first = true
+  # looping over the places we might possibly find it:
+  paths.each do |dir|
+    path = File.join(dir, command)
+    # only report on stuff we find:
+    if File.exists? path
+      # pre-calculate the final path, for later comparison:
+      final = File.realpath(path)
+      # Starting off, give the location where we found it
+      path_color = (path == final) ? path.cyan : path
+      if first
+	puts "#{command.green}: #{path_color}"
+      else
+	puts "#{command.yellow}: #{path_color} -- #{dupmessage}"
+      end
+      first = false
+      # for symlinks, we then want to walk the symlink chain:
+      if File.symlink? path
+	# which we do iteratively:
+	while File.symlink? path
+	  new = File.readlink path
+	  new2 = if new.length > 0 and new[0] == '/' or File.dirname(path) == '.'
+	    # qualified ('/'-based) filenames and links coming from
+	    # a relative location get handled as is:
+	    new
+	  else
+	    # otherwise, we prepend the path of where the link is to the
+	    # target of the link:
+	    File.join(File.dirname(path), new)
+	  end
+	  # depending on whether we had to expand it, we report
+	  # differently:
+	  if new == new2
+	    # we also colorize based on whether it's the final location:
+	    if new == final
+	      puts " -> #{new.cyan}"
+	    else
+	      puts " -> #{new}"
+	    end
+	  else
+	    puts " -> #{new} (#{new2})"
+	  end
+	  # re-set path to go around the loop again:
+	  path = new2
+	end
+      end
+      # in case that's not the realpath, print the realpath last:
+      if path != final
+	puts "  = #{final.cyan}"
+      end
+    end
+  end
+end
