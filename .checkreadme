@@ -1,0 +1,10 @@
+#!/bin/zsh
+
+# a simple command to see if README is actually listing everything we
+# have here.  Not considered part of the main software, just something
+# to help me make sure I keep everything documented.
+
+# compare listing of all executables with extraction of command names
+# from list in README.md:
+diff -u <(/bin/ls -1 *(*)) \
+        <(grep '^\* `' README.md | sed -e 's/^...//' -e 's/`.*//')

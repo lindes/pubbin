@@ -70,6 +70,15 @@ echo 'export PATH="$PATH:$HOME/lindes-bin/"' >> ~/.${SHELL#/bin/}rc
   possible things like `while not such-and-such; do sleep 1; done`,
   which will wait for such-and-such to return true.
 
+* `pronouncebase` - This is something of a strange one.  The idea is to
+  make reliably pronouncable ways of specifying numbers in various
+  bases, in such a way that the pronunciation not only indicates the
+  digits, but the base those digits are in.  So that, for example, "12"
+  in base 8 (10 in decimal) can be pronounced "tito sino", instead of
+  "twelve"... or "tita sina", which would be the base 5 pronounciation
+  of that sequence of digits (7 in decimal).  See links in opening
+  comment for more on where this came from and why it exists.
+
 * `toggle-pi-ap-mode` - toggles Access Point mode on a Raspberry Pi
   (with the help of some initial setup)
 
@@ -77,6 +86,12 @@ echo 'export PATH="$PATH:$HOME/lindes-bin/"' >> ~/.${SHELL#/bin/}rc
   vagrant, which can then be used as a baseline that's likely closer to
   your expected starting point, thus requiring less work (and less time
   spent) in the provisioning phase.
+
+* `wh` - a more-verbose `which`, with less typing required (ironic?) --
+  reports on where a given command-name can be found in $PATH, showing
+  symlinks and final real path of each entry.  Reports on duplicate
+  entries in case the same command name exists in multiple places in
+  $PATH.
 
 ## License
 
