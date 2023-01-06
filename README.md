@@ -79,6 +79,11 @@ echo 'export PATH="$PATH:$HOME/lindes-bin/"' >> ~/.${SHELL#/bin/}rc
   of that sequence of digits (7 in decimal).  See links in opening
   comment for more on where this came from and why it exists.
 
+* `screentitle` - a _very_ simple wrapper around echoing the escape
+  sequence that will set the title of a particular "window" within
+  `screen`.  Mostly just so I don't have to remember the escape
+  sequence.
+
 * `toggle-pi-ap-mode` - toggles Access Point mode on a Raspberry Pi
   (with the help of some initial setup)
 

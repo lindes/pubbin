@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# screentitle - title a window in `screen` from the command line
+
+# Note: bash, not sh, because echo changes behavior.
+
+echo -ne "\ek${*}\e\\"
